@@ -264,7 +264,7 @@ struct cam_isp_context {
 
 	int64_t                          frame_id;
 	uint32_t                         frame_id_meta;
-	uint32_t                         substate_activated;
+	enum cam_isp_ctx_activated_substate   substate_activated;
 	atomic_t                         process_bubble;
 	uint32_t                         bubble_frame_cnt;
 	struct cam_ctx_ops              *substate_machine;

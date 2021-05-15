@@ -1863,6 +1863,46 @@ static int cam_ife_csid_enable_csi2(
 		return rc;
 	}
 
+	/* Enable the CSI2 rx interrupts */
+	val = CSID_CSI2_RX_INFO_RST_DONE |
+		CSID_CSI2_RX_ERROR_TG_FIFO_OVERFLOW |
+		CSID_CSI2_RX_ERROR_LANE0_FIFO_OVERFLOW |
+		CSID_CSI2_RX_ERROR_LANE1_FIFO_OVERFLOW |
+		CSID_CSI2_RX_ERROR_LANE2_FIFO_OVERFLOW |
+		CSID_CSI2_RX_ERROR_LANE3_FIFO_OVERFLOW |
+		CSID_CSI2_RX_ERROR_CPHY_EOT_RECEPTION |
+		CSID_CSI2_RX_ERROR_CPHY_SOT_RECEPTION |
+		CSID_CSI2_RX_ERROR_CRC |
+		CSID_CSI2_RX_ERROR_ECC |
+		CSID_CSI2_RX_ERROR_MMAPPED_VC_DT |
+		CSID_CSI2_RX_ERROR_STREAM_UNDERFLOW |
+		CSID_CSI2_RX_ERROR_UNBOUNDED_FRAME |
+		CSID_CSI2_RX_ERROR_CPHY_PH_CRC;
+
+	/* Enable the interrupt based on csid debug info set */
+	if (csid_hw->csid_debug & CSID_DEBUG_ENABLE_SOT_IRQ)
+		val |= CSID_CSI2_RX_INFO_PHY_DL0_SOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL1_SOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL2_SOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL3_SOT_CAPTURED;
+
+	if (csid_hw->csid_debug & CSID_DEBUG_ENABLE_EOT_IRQ)
+		val |= CSID_CSI2_RX_INFO_PHY_DL0_EOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL1_EOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL2_EOT_CAPTURED |
+			CSID_CSI2_RX_INFO_PHY_DL3_EOT_CAPTURED;
+
+	if (csid_hw->csid_debug & CSID_DEBUG_ENABLE_SHORT_PKT_CAPTURE)
+		val |= CSID_CSI2_RX_INFO_SHORT_PKT_CAPTURED;
+
+	if (csid_hw->csid_debug & CSID_DEBUG_ENABLE_LONG_PKT_CAPTURE)
+		val |= CSID_CSI2_RX_INFO_LONG_PKT_CAPTURED;
+	if (csid_hw->csid_debug & CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE)
+		val |= CSID_CSI2_RX_INFO_CPHY_PKT_HDR_CAPTURED;
+
+	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+		csid_reg->csi2_reg->csid_csi2_rx_irq_mask_addr);
+
 	cam_ife_csid_csi2_irq_ctrl(csid_hw, true);
 	return 0;
 }
@@ -4131,6 +4171,10 @@ int cam_ife_csid_stop(void *hw_priv,
 			break;
 		}
 	}
+
+	spin_lock_irqsave(&csid_hw->lock_state, flags);
+	csid_hw->device_enabled = 0;
+	spin_unlock_irqrestore(&csid_hw->lock_state, flags);
 
 	if (res_mask)
 		rc = cam_ife_csid_poll_stop_status(csid_hw, res_mask);
